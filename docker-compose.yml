@@ -6,37 +6,9 @@ services:
     restart: 'no'
     volumes:
       - ./app:/app
-    command: ["install", "--ignore-platform-reqs"]
-
-  app:
-    container_name: app
-    image: php:fpm-alpine
-    restart: unless-stopped
-    ports:
-      - 9000:9000
-    volumes:
-      - ./app:/var/www/html
-    networks:
-      - backend
-    links:
-      - redis
-      - db
-    depends_on:
-      - composer
-
-  nginx:
-    container_name: nginx
-    image: nginx:stable-alpine
-    restart: unless-stopped
-    ports:
-      - 80:80
-      - 443:443
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    links:
-      - app
-    networks:
-      - backend
+    command: >
+      sh -c "composer install --optimize-autoloader --no-dev --ignore-platform-reqs &&
+             composer update --no-dev"
 
   db:
     container_name: mariadb
@@ -50,6 +22,38 @@ services:
       - MYSQL_PASSWORD=84268
     volumes:
       - dbdata:/var/lib/mysql
+    networks:
+      - backend
+
+  app:
+    container_name: app
+    build: ./php
+    image: app:latest
+    restart: unless-stopped
+    ports:
+      - 9000:9000
+    volumes:
+      - ./app:/var/www/html
+    networks:
+      - backend
+    links:
+      - redis
+      - db
+    depends_on:
+      - composer
+      - db
+
+  nginx:
+    container_name: nginx
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    links:
+      - app
     networks:
       - backend
 
